@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload 
 from fastapi.middleware.cors import CORSMiddleware 
 from .database import engine, SessionLocal, get_db
+import os, httpx
 from .models import Base, ReviewDB
 from .schemas import ( 
     ReviewCreate, ReviewRead
@@ -40,10 +41,29 @@ def list_reviews(db: Session = Depends(get_db)):
     stmt = select(ReviewDB).order_by(ReviewDB.id)
     return db.execute(stmt).scalars().all()
 
+USER_SERVICE_BASE_URL = os.getenv("USER_SERVICE_BASE_URL", "http://user-service:8000").rstrip("/")
+
+
 ## Create Review ##
 @app.post("/api/reviews", response_model=ReviewRead, status_code=status.HTTP_201_CREATED)
 def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
     review = ReviewDB(**payload.model_dump())
+
+    url = f"{USER_SERVICE_BASE_URL}/api/users/{payload.user_id}"
+    try:
+        resp = httpx.get(url, timeout=3.0)
+    except:
+        raise HTTPException(status_code=503, detail="User service unavailable")
+
+    if resp.status_code == 404:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if resp.status_code >= 500:
+        raise HTTPException(status_code=503, detail="User service unavailable")
+
+    if resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Error verifying user")
+
     db.add(review)
     try:
         db.commit()

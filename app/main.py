@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload 
 from fastapi.middleware.cors import CORSMiddleware 
 from .database import engine, SessionLocal, get_db
-import os, httpx
+import os, httpx, pybreaker
 from .models import Base, ReviewDB
 from .schemas import ( 
     ReviewCreate, ReviewRead
@@ -41,8 +41,11 @@ def list_reviews(db: Session = Depends(get_db)):
     stmt = select(ReviewDB).order_by(ReviewDB.id)
     return db.execute(stmt).scalars().all()
 
-USER_SERVICE_BASE_URL = os.getenv("USER_SERVICE_BASE_URL", "http://user-service:8000").rstrip("/")
-
+USER_SERVICE_BASE_URL = os.getenv("USER_SERVICE_BASE_URL", "http://user-service:8001").rstrip("/")
+user_cb = pybreaker.CircuitBreaker(
+    fail_max=3,  
+    reset_timeout=15, 
+)
 
 ## Create Review ##
 @app.post("/api/reviews", response_model=ReviewRead, status_code=status.HTTP_201_CREATED)
@@ -50,13 +53,12 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
 
     url = f"{USER_SERVICE_BASE_URL}/api/users/{payload.user_id}"
     try:
-        resp = httpx.get(url, timeout=3.0)
-    except:
+        resp = user_cb.call(httpx.get, url, timeout=3.0)
+    except pybreaker.CircuitBreakerError:
+        raise HTTPException(status_code=503, detail="User service temporarily unavailable (circuit open)")
+    except Exception:
         raise HTTPException(status_code=503, detail="User service unavailable")
 
-    print("Calling user-service URL:", url)
-    print("Status code from user-service:", resp.status_code)
-    print("Response body:", resp.text)
 
     if resp.status_code == 404:
         raise HTTPException(status_code=404, detail="User not found")
@@ -72,6 +74,19 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(review)
+        notif_url = f"{os.getenv('NOTIF_SERVICE_BASE_URL','http://notification-service:8000').rstrip('/')}/api/notifications"
+        payload_notif = {
+            "event_type": "review.created",
+            "user_id": review.user_id,
+            "tmdb_movie_id": review.tmdb_movie_id,
+            "review_id": review.id,
+            "rating": review.rating,
+        }
+        try:
+            httpx.post(notif_url, json=payload_notif, timeout=3.0)
+        except Exception:
+            print("Notification service call failed")
+
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="User already reviewed this movie")

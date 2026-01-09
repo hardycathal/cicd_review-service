@@ -1,16 +1,15 @@
-# movie-service/app/models.py
+from datetime import datetime, timezone
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Integer
+from sqlalchemy import Integer, String, DateTime, UniqueConstraint
 
 class Base(DeclarativeBase):
     pass
 
-class MovieDB(Base):
-    __tablename__ = "movies"
-
+class ReviewDB(Base):
+    __tablename__ = "reviews"
     id: Mapped[int] = mapped_column(primary_key=True)
-    tmdb_id: Mapped[int | None] = mapped_column(Integer, nullable=True, unique=True)
-    title: Mapped[str] = mapped_column(String(200), nullable=False)
-    release_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    overview: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    poster_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    tmdb_movie_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)
+    review_text: Mapped[str | None] = mapped_column(String(500), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

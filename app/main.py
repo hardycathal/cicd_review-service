@@ -74,7 +74,7 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(review)
-        notif_url = f"{os.getenv('NOTIF_SERVICE_BASE_URL','http://notification-service:8000').rstrip('/')}/api/notifications"
+        notif_url = f"{os.getenv('NOTIF_SERVICE_BASE_URL','http://notification-service:8004').rstrip('/')}/api/notifications"
         payload_notif = {
             "event_type": "review.created",
             "user_id": review.user_id,

@@ -54,6 +54,10 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
     except:
         raise HTTPException(status_code=503, detail="User service unavailable")
 
+    print("Calling user-service URL:", url)
+    print("Status code from user-service:", resp.status_code)
+    print("Response body:", resp.text)
+
     if resp.status_code == 404:
         raise HTTPException(status_code=404, detail="User not found")
 

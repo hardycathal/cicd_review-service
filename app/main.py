@@ -83,9 +83,14 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
             "rating": review.rating,
         }
         try:
-            httpx.post(notif_url, json=payload_notif, timeout=3.0)
-        except Exception:
-            print("Notification service call failed")
+            with httpx.Client(timeout=3.0) as client:
+                r = client.post(notif_url, json=payload_notif)
+
+            if r.status_code not in (200, 201):
+                print("Notification service error:", r.status_code, r.text)
+
+        except httpx.RequestError as e:
+            print("Notification service request failed:", e)
 
     except IntegrityError:
         db.rollback()

@@ -47,7 +47,6 @@ USER_SERVICE_BASE_URL = os.getenv("USER_SERVICE_BASE_URL", "http://user-service:
 ## Create Review ##
 @app.post("/api/reviews", response_model=ReviewRead, status_code=status.HTTP_201_CREATED)
 def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
-    review = ReviewDB(**payload.model_dump())
 
     url = f"{USER_SERVICE_BASE_URL}/api/users/{payload.user_id}"
     try:
@@ -63,9 +62,8 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
 
     if resp.status_code != 200:
         raise HTTPException(status_code=502, detail="Error verifying user")
-    print("Calling user-service URL:", url)
-    print("Status code from user-service:", resp.status_code)
-    print("Response body:", resp.text)
+    
+    review = ReviewDB(**payload.model_dump())
     db.add(review)
     try:
         db.commit()

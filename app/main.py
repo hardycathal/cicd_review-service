@@ -11,7 +11,7 @@ from .models import Base, MovieDB
 from .schemas import ( 
     MovieCreate, MovieRead
 ) 
-import requests
+import httpx
 
 TMDB_API_KEY = os.getenv("TMDB_API_KEY")
 #Replacing @app.on_event("startup") 
@@ -44,5 +44,27 @@ def get_popular():
     url = "https://api.themoviedb.org/3/movie/popular"
     params = {"api_key": TMDB_API_KEY}
 
-    response = requests.get(url, params=params)
+    try:
+        response = httpx.get(url, params=params)
+    except:
+        raise HTTPException(status_code=502, detail="Error calling TMDB API")
+    
     return response.json()
+
+@app.get("/api/movies/search")
+def search_movie(query: str):
+    if not TMDB_API_KEY:
+        raise HTTPException(status_code=500, detail="TMDB_API_KEY not configured")
+    
+    url = "https://api.themoviedb.org/3/search/movie"
+    params = {"api_key": TMDB_API_KEY, "query": query}
+
+    try:
+        response = httpx.get(url, params=params)
+    except:
+        raise HTTPException(status_code=502, detail="Error calling TMDB API")
+    
+    return response.json()
+
+
+

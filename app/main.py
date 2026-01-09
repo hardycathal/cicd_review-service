@@ -41,7 +41,7 @@ def list_reviews(db: Session = Depends(get_db)):
     stmt = select(ReviewDB).order_by(ReviewDB.id)
     return db.execute(stmt).scalars().all()
 
-USER_SERVICE_BASE_URL = os.getenv("USER_SERVICE_BASE_URL", "http://user-service:8000").rstrip("/")
+USER_SERVICE_BASE_URL = os.getenv("USER_SERVICE_BASE_URL", "http://user-service:8000")
 user_cb = pybreaker.CircuitBreaker(
     fail_max=3,  
     reset_timeout=15, 
@@ -74,7 +74,7 @@ def create_review(payload: ReviewCreate, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(review)
-        notif_url = f"{os.getenv('NOTIF_SERVICE_BASE_URL','http://notification-service:8000').rstrip('/')}/api/notifications"
+        notif_url = f"{os.getenv('NOTIF_SERVICE_BASE_URL','http://notification-service:8000')}/api/notifications"
         payload_notif = {
             "event_type": "review.created",
             "user_id": review.user_id,

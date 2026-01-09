@@ -1,18 +1,19 @@
-# movie-service/app/schemas.py
 from pydantic import BaseModel, ConfigDict
+from typing import Annotated
+from annotated_types import Ge, Le
 
-class MovieCreate(BaseModel):
-    title: str
-    tmdb_id: int | None = None
-    release_year: int | None = None
-    overview: str | None = None
-    poster_url: str | None = None
+ratingInt = Annotated[int, Ge(1), Le(10)]
 
-class MovieRead(BaseModel):
+class ReviewCreate(BaseModel):
+    user_id: int
+    tmdb_movie_id: int
+    rating: ratingInt
+    review_text: str
+
+class ReviewRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
-    title: str
-    tmdb_id: int | None = None
-    release_year: int | None = None
-    overview: str | None = None
-    poster_url: str | None = None
+    user_id: int
+    tmdb_movie_id: int
+    rating: ratingInt
+    review_text: str
